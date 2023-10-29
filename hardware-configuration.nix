@@ -33,8 +33,18 @@
   # with explicit per-interface declarations with `networking.interfaces.<interface>.useDHCP`.
   networking.useDHCP = lib.mkDefault true;
   # networking.interfaces.wlp0s20f3.useDHCP = lib.mkDefault true;
+	
+  # Configure bluetooth to fix Keychron connection delay problem 
+  hardware.bluetooth = { 
+    enable = true; 
+    settings.General = { 
+      FastConnectable = true; 
+      ReconnectAttempts = 7; 
+      ReconnectIntervals = "1, 2, 3"; 
+    }; 
+  };
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
-  powerManagement.cpuFreqGovernor = lib.mkDefault "powersaving";
+  powerManagement.cpuFreqGovernor = lib.mkDefault "balance";
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 }

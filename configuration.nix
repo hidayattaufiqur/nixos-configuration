@@ -1,17 +1,38 @@
 # Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
+# TODO: Modularize this 
+
+
 { config, pkgs, ... }:
 
 {
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
+      ./battery-configuration.nix
+      ./cerebro.nix
     ];
 
   # Bootloader.
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
+  # boot.loader.systemd-boot.enable = true;
+  # boot.loader.efi.canTouchEfiVariables = true;
+
+  # Dual Booting using Grub 
+   boot.loader = { 
+     efi = { 
+       canTouchEfiVariables = true;
+       efiSysMountPoint = "/boot/efi";
+     };
+     grub = { 
+	enable = true; 
+	devices = ["nodev"];
+	efiSupport = true;  
+	useOSProber = true;  
+	configurationLimit = 5;
+     };
+     timeout = 7;  
+   };
 
   networking.hostName = "nixos"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
@@ -22,7 +43,8 @@
 
   # Enable networking
   networking.networkmanager.enable = true;
-
+  networking.nameservers = [ "1.1.1.1" "1.0.0.1" ];
+  
   # Set your time zone.
   time.timeZone = "Asia/Jakarta";
 
@@ -77,11 +99,30 @@
   # Enable touchpad support (enabled default in most desktopManager).
   services.xserver.libinput.enable = true;
 
+  # Enable docker
+  virtualisation.docker.enable = true;
+
+  # Enable programs
+  programs.steam = {
+    enable = true;
+    remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
+    dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
+  };
+	
+  programs.zsh.ohMyZsh = { 
+    enable = true;
+    theme = "agnoster";
+    custom = "~/.zshrc";
+  };
+
+  programs.java.enable = true; 
+  programs.noisetorch.enable = true; 
+
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.nixos = {
     isNormalUser = true;
     description = "swift";
-    extraGroups = [ "networkmanager" "wheel" ];
+    extraGroups = [ "networkmanager" "wheel" "docker" "logiops"];
     packages = with pkgs; [
     	neovim # basic necessity
     ];
@@ -98,73 +139,144 @@
   # Enabling systemctl start for apps that have systemd units. (refer to systemd in NixOS section on the manual).
   systemd.packages = [ pkgs.logiops ]; # Haven't found a way to make this work, yet. 
 
+  systemd.services.keyboard-startup-fix = { 
+    enable = true; 
+    description = "Keychron enable fn keys mode";
+    unitConfig = {
+      Type = "simple";
+      # ...
+    };
+
+    wantedBy = [ "multi-user.target" ];
+
+    serviceConfig = {
+      ExecStart = "~/keyboard-fix.sh";
+      # ExecStart = "/etc/init/keyboard-fix.sh";
+      # ExecStart = "echo 2 | sudo tee /sys/module/hid_apple/parameters/fnmode";
+    };
+  };
+
+
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
   nixpkgs.config.permittedInsecurePackages = [
       "electron-12.2.3"
+      "python-2.7.18.6"
+      "steam"
+      "steam-original"
+      "steam-run"
   ];
 
+  # Disable default Gnome apps
+  environment.gnome.excludePackages = with pkgs.gnome; [
+    cheese      # photo booth
+    epiphany    # web browser
+    gedit       # text editor
+    simple-scan # document scanner
+    yelp        # help viewer
+    geary       # email client
+    seahorse    # password manager
 
+    gnome-characters 
+    gnome-contacts
+    gnome-maps 
+    pkgs.gnome-connections
+  ];
+  
   # List packages installed in system profile. To search, run:
   # $ nix search wget
-  environment.systemPackages = with pkgs; [
-	vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-	wget
-	neovim 
-	vscode
-	git
-	brave
-	spotify
-	tmux
-	neofetch
-	gnomeExtensions.resource-monitor
-	alacritty 
-	etcher  
-	stremio
-	firefox
-	jetbrains.datagrip
-	gparted
-	python3
-	go
-	gpp
-	gcc9
-	docker
-	postman
-	jdk
-	ulauncher
-    	mongodb 
-	obs-studio
-	redis
-	calibre
-	logiops
-	tldr
-	syncthing
-	
-	# Linux utilities 
-	tlp
+  environment.systemPackages = with pkgs; [		
+    # Gnome extensions
+    gnomeExtensions.compiz-alike-magic-lamp-effect
+    gnomeExtensions.just-perfection
+    gnomeExtensions.resource-monitor
+    gnomeExtensions.dash-to-dock
+    gnomeExtensions.blur-my-shell
+    gnomeExtensions.appindicator
+    gnomeExtensions.quick-settings-tweaker
+    themechanger
+    
+    # Basic Apps
+    telegram-desktop
+    cinnamon.nemo
+    stremio
+    gparted
+    obs-studio
+    calibre
+    blender
+    thunderbird
+    brave
+    spotify
+    blanket
+    libreoffice    
 
-	# Basic linux CLI tools
-	usbutils	
+    # Dev apps 
+    vscode
+    python2
+    python3
+    go
+    gpp
+    gcc9
+    docker
+    docker-compose
+    postman
+    jdk
+    redis
+    nodejs_20
+    alacritty 
+    jetbrains.datagrip
+    neovim 
+    vim
+    
+    # Linux utilities 
+    gnumake42
+    xdotool
+    wl-clipboard
+    dos2unix 
+    unzip
+    tmux
+    neofetch
+    tlp
+    git
+    wget
+    htop
+    usbutils
+    oh-my-zsh
+    zsh-powerlevel10k
+    tree
+    tldr
+    cron
+    noisetorch 
+    ripgrep 
+    logiops
+    tldr
+    syncthing
+    rofi
+    rofimoji
 
-	# GTK themes 
-	dracula-theme
-	dracula-icon-theme
-	tmuxPlugins.dracula
-	nordic
+    # GTK themes 
+    nordic
   ];
+	
+  nix = { 
+    settings.auto-optimise-store = true; 
+    gc = { 
+     automatic = true; 
+     dates = "weekly"; 
+     options = "--delete-older-than- 7d";
+    }; 
+  }; 
+  # services.power-profiles-daemon.enable = false;
+  # services.thermald.enable = true;
 
-  # Power management configuration
-  services.power-profiles-daemon.enable = false;
-  services.thermald.enable = true;
-
-  services.tlp = { settings = {
-    CPU_BOOST_ON_AC = 1;
-    CPU_BOOST_ON_BAT = 0;
-    CPU_SCALING_GOVERNOR_ON_AC = "performance";
-    CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
-    };
-  };
+  # services.tlp = { settings = {
+# CPU_BOOST_ON_AC = 1;
+#   CPU_BOOST_ON_BAT = 0;
+#    CPU_SCALING_GOVERNOR_ON_AC = "performance";
+#    CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
+#    };
+#  };
 
   boot.supportedFilesystems = [ "ntfs" ];
 
@@ -180,7 +292,6 @@
 
   # Enable the OpenSSH daemon.
   # services.openssh.enable = true;
-  # services.logiops.enable = true;
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
@@ -195,5 +306,15 @@
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "23.05"; # Did you read the comment?
-
+ 
+  # Package overlays 
+  nixpkgs.overlays = [
+    (final: prev: {
+      steam = prev.steam.override ({ extraPkgs ? pkgs': [], ... }: {
+        extraPkgs = pkgs': (extraPkgs pkgs') ++ (with pkgs'; [
+          libgdiplus
+        ]);
+      });
+    })
+  ];
 }
